@@ -1,0 +1,39 @@
+spring:
+  data:
+    mongodb:
+      uri: mongodb+srv://killuaryu1118_db_user:mrr34r3ZRUMTzfbK@cluster0.ve9xziv.mongodb.net/inventario_b?retryWrites=true&w=majority&appName=Cluster0
+      database: inventario_b
+  application:
+    name: inventario-b-api
+
+server:
+  port: 8080
+
+app:
+  jwt:
+    secret: "ZxP2!dE9kLm#7yTqG@4rWn$JvB^sUoF3hH+8kCiL0pR%tXaM"
+    expiration-minutes: 120
+
+    server:
+      error:
+        include-message: always
+        include-binding-errors: always
+
+  app:
+    stock:
+      low-threshold: 5
+
+
+springdoc:
+  packages-to-scan: Control_inventario.control_inventario.controlador
+  paths-to-match: /api/**
+
+  swagger-ui:
+    path: /swagger-ui
+  api-docs:
+    path: /v3/api-docs
+
+logging:
+  level:
+    org.springdoc: INFO
+    org.springframework.web: INFO

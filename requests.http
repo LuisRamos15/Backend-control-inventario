@@ -1,0 +1,128 @@
+# Variables
+@host = http://localhost:8080
+
+### 1) Registro de usuario (ADMIN necesario para endpoints /api/usuarios; aquí creamos un usuario)
+POST {{host}}/api/auth/registro
+Content-Type: application/json
+
+{
+  "nombreUsuario": "admin1",
+  "password": "contrasenaSegura123",
+  "roles": ["ADMIN"]
+}
+
+### 2) Login -> devuelve token
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "nombreUsuario": "admin1",
+  "password": "contrasenaSegura123"
+}
+
+### 3) Example: usar token (replace {{token}} with the value from login response)
+# Get products (roles: ADMIN,SUPERVISOR,OPERADOR)
+GET {{host}}/api/productos
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbjEiLCJleHAiOjE3NTk1MzYzNzUsImlhdCI6MTc1OTUyOTE3NSwicm9sZXMiOlsiUk9MRV9BRE1JTiJdfQ.6zBq4pXi-rCltXlstjVDnyMNZvyD1Gsj_FAGh9WOP24
+
+
+### 4) Crear producto (roles: ADMIN,SUPERVISOR)
+POST {{host}}/api/productos
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbjEiLCJleHAiOjE3NTk1MzYzNzUsImlhdCI6MTc1OTUyOTE3NSwicm9sZXMiOlsiUk9MRV9BRE1JTiJdfQ.6zBq4pXi-rCltXlstjVDnyMNZvyD1Gsj_FAGh9WOP24
+
+{
+  "nombre": "Pc de mesa",
+  "stock": 20
+}
+
+### 5) Actualizar producto (roles: ADMIN,SUPERVISOR)
+PUT {{host}}/api/productos/p1
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbjEiLCJleHAiOjE3NTk1MzYzNzUsImlhdCI6MTc1OTUyOTE3NSwicm9sZXMiOlsiUk9MRV9BRE1JTiJdfQ.6zBq4pXi-rCltXlstjVDnyMNZvyD1Gsj_FAGh9WOP24
+
+{
+  "nombre": "Teclado mecánico si",
+  "stock": 15
+}
+
+### 6) Eliminar producto (roles: ADMIN)
+DELETE {{host}}/api/productos/68e04ab38559c30c8c6bed68
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbjEiLCJleHAiOjE3NTk1MzYzNzUsImlhdCI6MTc1OTUyOTE3NSwicm9sZXMiOlsiUk9MRV9BRE1JTiJdfQ.6zBq4pXi-rCltXlstjVDnyMNZvyD1Gsj_FAGh9WOP24
+
+
+### 7) Crear movimiento (roles: SUPERVISOR,OPERADOR) - SALIDA (ejemplo)
+POST {{host}}/api/movimientos
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbjEiLCJleHAiOjE3NTk1MzYzNzUsImlhdCI6MTc1OTUyOTE3NSwicm9sZXMiOlsiUk9MRV9BRE1JTiJdfQ.6zBq4pXi-rCltXlstjVDnyMNZvyD1Gsj_FAGh9WOP24
+
+{
+  "productoId": "68e04b9a8559c30c8c6bed69",
+  "cantidad": 5,
+  "tipo": "SALIDA"
+}
+
+### 7.1) Crear movimiento - ENTRADA (ejemplo)
+POST {{host}}/api/movimientos
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "productoId": "68e05624de9f1c41d5079c89",
+  "cantidad": 10,
+  "tipo": "ENTRADA"
+}
+
+### 7.2) Crear movimiento - sin token (debe devolver 401 si la seguridad está activa)
+POST {{host}}/api/movimientos
+Content-Type: application/json
+
+{
+  "productoId": "68e04b9a8559c30c8c6bed69",
+  "cantidad": 2,
+  "tipo": "SALIDA"
+}
+
+### 7.3) Crear movimiento - payload inválido (ej: cantidad no numérica) => espera 400 o manejo de error
+POST {{host}}/api/movimientos
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "productoId": "68e04b9a8559c30c8c6bed69",
+  "cantidad": "cinco",
+  "tipo": "SALIDA"
+}
+
+### 7.4) Ejemplo curl (usa la variable TOKEN desde tu shell)
+# Obtener TOKEN (ejemplo, si no usas jq copia el token manualmente):
+# TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login -H "Content-Type: application/json" -d '{"nombreUsuario":"operador1","password":"operadorPass123"}' | jq -r '.token')
+
+# Crear movimiento con curl
+curl -X POST {{host}}/api/movimientos \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"productoId":"p1","cantidad":5,"tipo":"SALIDA"}' -v
+
+### 8) Endpoints de usuarios (roles: ADMIN)
+# Crear usuario via /api/usuarios
+POST {{host}}/api/usuarios
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "nombreUsuario": "operador1",
+  "password": "operadorPass123",
+  "roles": ["OPERADOR"]
+}
+
+# Listar usuarios
+GET {{host}}/api/usuarios
+Authorization: Bearer {{token}}
+
+
+### Notas:
+# - Usa el bloque 2 (login) para obtener el token y pégalo donde pone {{token}} (sin comillas).
+# - Para VS Code: instala la extensión "REST Client" y haz clic en "Send Request" sobre cada bloque.
+# - Si prefieres curl, después de obtener el token ejecuta:
+#   curl -H "Authorization: Bearer <token>" {{host}}/api/productos
