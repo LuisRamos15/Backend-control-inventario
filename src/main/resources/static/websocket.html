@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Sistema de Inventario - Dashboard Conectado</title>
+    <title>Inventario — Dashboard de Pruebas (Backend)</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
@@ -39,12 +39,18 @@
         #liveTable tbody tr:nth-child(odd){background:#fafafa}
         .ok{color:var(--green);font-weight:700}
         .bad{color:var(--red);font-weight:700}
+        .btn{background:#1976d2;color:#fff;border:0;border-radius:6px;padding:8px 12px;cursor:pointer;font-weight:600}
+        .btn.gray{background:#607d8b}
+        .btn.green{background:#4caf50}
+        .btn.red{background:#f44336}
+        .btn:disabled{opacity:.6;cursor:not-allowed}
+        .btns{display:flex;gap:10px;flex-wrap:wrap}
     </style>
 </head>
 <body>
 <div class="header">
     <div class="wrap">
-        <h1><i class="fas fa-warehouse"></i> Dashboard de Control de Inventario</h1>
+        <h1><i class="fas fa-warehouse"></i> Dashboard de Control de Inventario — Pruebas</h1>
         <div class="toolbar">
             <input id="jwtInput" type="text" placeholder="Pega aquí tu JWT (Bearer)…">
             <button id="btnGuardarToken">Guardar token</button>
@@ -55,6 +61,7 @@
 </div>
 
 <div class="wrap">
+    <!-- KPIs -->
     <div class="stats-grid">
         <div class="stat-card"><div class="stat-icon primary"><i class="fas fa-boxes"></i></div><div><h3 style="margin:0 0 4px">Total Productos</h3><div id="statProductos" style="font-size:24px;font-weight:800">—</div></div></div>
         <div class="stat-card"><div class="stat-icon warning"><i class="fas fa-exclamation-triangle"></i></div><div><h3 style="margin:0 0 4px">Stock Bajo</h3><div id="statBajo" style="font-size:24px;font-weight:800">—</div></div></div>
@@ -62,6 +69,7 @@
         <div class="stat-card"><div class="stat-icon danger"><i class="fas fa-bell"></i></div><div><h3 style="margin:0 0 4px">Alertas Activas</h3><div id="statAlertas" style="font-size:24px;font-weight:800">—</div></div></div>
     </div>
 
+    <!-- Gráficos y Top -->
     <div class="grid-2">
         <div class="card">
             <h2>Movimientos por Día <span id="spinMov" class="muted">Cargando…</span></h2>
@@ -76,17 +84,38 @@
         </div>
     </div>
 
+    <!-- Alertas -->
     <div class="card" style="margin-top:12px">
         <h2>Alertas de Stock (Tiempo Real)</h2>
         <ul id="alertasList"></ul>
     </div>
 
+    <!-- Movimientos en vivo -->
     <div class="card" style="margin-top:12px">
         <h2>Movimientos en Vivo</h2>
         <table id="liveTable">
             <thead><tr><th>Fecha</th><th>Tipo</th><th>Producto</th><th>SKU</th><th>Cantidad</th><th>Usuario</th><th>Stock</th></tr></thead>
             <tbody></tbody>
         </table>
+    </div>
+
+    <!-- Reportes -->
+    <div class="card" style="margin-top:12px">
+        <h2>Reportes (descarga con JWT)</h2>
+        <div class="btns">
+            <button class="btn" onclick="downloadReport('/api/reportes/inventario/pdf','inventario.pdf')">
+                <i class="fas fa-file-pdf"></i>&nbsp; Inventario (PDF)
+            </button>
+            <button class="btn gray" onclick="downloadReport('/api/reportes/movimientos/pdf','movimientos.pdf')">
+                <i class="fas fa-file-pdf"></i>&nbsp; Movimientos (PDF)
+            </button>
+            <button class="btn green" onclick="downloadReport('/api/reportes/inventario/excel','inventario.xlsx')">
+                <i class="fas fa-file-excel"></i>&nbsp; Inventario (Excel)
+            </button>
+        </div>
+        <p class="muted" style="margin-top:8px">
+            * El botón Excel requiere que tengas el endpoint <code>/api/reportes/inventario/excel</code> habilitado con Apache POI.
+        </p>
     </div>
 </div>
 
@@ -98,12 +127,11 @@
     let wsConnected = false;
     let chartMov = null;
 
-    // Memoria para evitar duplicados en UI (5 min de ventana)
-    const seenMovements = new Map(); // key -> timestamp(ms)
+    // Memoria para evitar duplicados visuales de WS
+    const seenMovements = new Map();
     function movementKey(m){
       const f = (m.fecha || m.timestamp || m.createdAt || m.fechaHora || '').toString().slice(0,19);
-      const k = [m.id || m._id, m.productoId, m.sku, m.tipo, m.cantidad, m.stockDespues, f].join('|');
-      return k;
+      return [m.id||m._id, m.productoId, m.sku, m.tipo, m.cantidad, m.stockDespues, f].join('|');
     }
     function gcSeen(){
       const now = Date.now();
@@ -116,21 +144,40 @@
     function setAuthChip(on){ const el=document.getElementById('authChip'); el.classList.toggle('off',!on); el.innerHTML = `<i class="fas fa-lock${on?'-open':''}"></i> Auth: ${on?'ON':'OFF'}`; }
     function setWsChip(on){ const el=document.getElementById('wsChip'); el.classList.toggle('off',!on); el.innerHTML = `<i class="fas fa-broadcast-tower"></i> WS: ${on?'ON':'OFF'}`; }
     function auth(){ return TOKEN ? { Authorization: 'Bearer '+TOKEN } : {}; }
+
     async function getJSON(url){
       const r = await fetch(url, { headers: { 'Accept':'application/json', ...auth() } });
       if(!r.ok){
         const txt = await r.text();
         if(r.status===401 || r.status===403){
           setAuthChip(false);
-          alert('⚠️ Necesitas un JWT válido para ver el dashboard.\nPega tu token en el campo superior y pulsa "Guardar token".');
+          alert('⚠️ Necesitas un JWT válido para ver el dashboard y descargar reportes.\nPega tu token arriba y pulsa "Guardar token".');
         }
         throw new Error(txt || r.statusText);
       }
       setAuthChip(true);
       return r.json();
     }
-    const fmt = iso => { try{ const d=new Date(iso); return d.toISOString().replace('T',' ').substring(0,19); }catch{ return iso; } };
 
+    // Descargar con JWT
+    async function downloadReport(path, filename){
+      try{
+        const r = await fetch(`${BASE_URL}${path}`, { headers: { ...auth() } });
+        if(!r.ok){
+          const txt = await r.text();
+          throw new Error(txt || r.statusText);
+        }
+        const blob = await r.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+        URL.revokeObjectURL(url); a.remove();
+      }catch(e){
+        alert('No se pudo descargar: ' + e.message);
+      }
+    }
+
+    const fmt = iso => { try{ const d=new Date(iso); return d.toISOString().replace('T',' ').substring(0,19); }catch{ return iso; } };
     window.injectToken = t => { TOKEN = t; localStorage.setItem('token', t); document.getElementById('jwtInput').value = t; setAuthChip(!!t); alert('Token guardado'); };
 
     // ===== Dashboard =====
@@ -185,12 +232,14 @@
       const li = document.createElement('li');
       li.innerHTML = `<strong>${a.productoNombre||a.nombre||'Producto'}</strong> — SKU: ${a.sku||'-'} · Stock: <b>${a.stockActual??'-'}</b> (min ${a.minimo??'-'})`;
       document.getElementById('alertasList').prepend(li);
+      // Si quieres sonido rápido:
+      // new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
     }
 
     function pushMovimiento(m){
       gcSeen();
       const key = movementKey(m);
-      if(seenMovements.has(key)) return;     // evita duplicado visual
+      if(seenMovements.has(key)) return;
       seenMovements.set(key, Date.now());
 
       const fechaRaw = m.fecha || m.timestamp || m.createdAt || m.fechaHora || new Date().toISOString();
@@ -210,7 +259,7 @@
       const rows = tb.querySelectorAll('tr'); if(rows.length>50) rows[rows.length-1].remove();
     }
 
-
+    // ===== WebSocket =====
     function desconectarWS(cb){
       try{
         if(stomp){
@@ -221,7 +270,7 @@
     }
 
     function conectarWS(){
-      if(wsConnected) return; // evita múltiples conexiones
+      if(wsConnected) return;
       const sock = new SockJS(`${BASE_URL}/ws`);
       stomp = Stomp.over(sock); stomp.debug = null;
       const headers = TOKEN ? { Authorization: 'Bearer '+TOKEN } : {};
@@ -236,7 +285,7 @@
       }, err => { console.error('WS error', err); wsConnected = false; setWsChip(false); });
     }
 
-
+    // ===== Inicio =====
     async function initDashboard(){
       document.getElementById('jwtInput').value = TOKEN || '';
       setAuthChip(!!TOKEN);
@@ -251,12 +300,10 @@
       const t = document.getElementById('jwtInput').value.trim();
       if(!t){ alert('Pega un JWT primero.'); return; }
       TOKEN = t; localStorage.setItem('token', t); setAuthChip(true);
-
       desconectarWS(initDashboard);
     });
 
     window.addEventListener('beforeunload', ()=>desconectarWS());
-
     document.addEventListener('DOMContentLoaded', initDashboard);
 </script>
 </body>

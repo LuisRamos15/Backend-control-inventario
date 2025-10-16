@@ -30,30 +30,30 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Preflight
+
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // WebSocket (SockJS usa /ws, /ws/info, /ws/**/**)
+
                         .requestMatchers("/ws", "/ws/**").permitAll()
 
-                        // Recursos estáticos (html/js/css/imágenes) servidos por Spring
+
                         .requestMatchers(
-                                "/",                     // raíz
+                                "/",
                                 "/index.html",
-                                "/websocket.html",       // nuestro monitor
+                                "/websocket.html",
                                 "/favicon.ico",
                                 "/assets/**", "/static/**", "/public/**",
                                 "/css/**", "/js/**", "/img/**"
                         ).permitAll()
 
-                        // Público
+
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/actuator/health",
                                 "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**"
                         ).permitAll()
 
-                        // Todo lo demás requiere JWT
+
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

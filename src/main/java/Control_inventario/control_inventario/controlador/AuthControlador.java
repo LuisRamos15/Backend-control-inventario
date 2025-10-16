@@ -3,23 +3,22 @@ package Control_inventario.control_inventario.controlador;
 import Control_inventario.control_inventario.dto.LoginReq;
 import Control_inventario.control_inventario.dto.LoginRes;
 import Control_inventario.control_inventario.dto.UsuarioReq;
+import Control_inventario.control_inventario.entidad.Rol;
 import Control_inventario.control_inventario.entidad.Usuario;
-import Control_inventario.control_inventario.repositorio.UsuarioRepositorio;
 import Control_inventario.control_inventario.seguridad.JwtUtil;
 import Control_inventario.control_inventario.servicio.UsuarioDetailsService;
 import Control_inventario.control_inventario.servicio.UsuarioServicio;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
@@ -30,27 +29,25 @@ public class AuthControlador {
     private final UsuarioDetailsService userDetailsService;
     private final JwtUtil jwtUtil;
     private final UsuarioServicio usuarioServicio;
-    private final UsuarioRepositorio usuarioRepo;
 
     public AuthControlador(AuthenticationManager authManager,
                            UsuarioDetailsService userDetailsService,
                            JwtUtil jwtUtil,
-                           UsuarioServicio usuarioServicio,
-                           UsuarioRepositorio usuarioRepo) {
+                           UsuarioServicio usuarioServicio) {
         this.authManager = authManager;
         this.userDetailsService = userDetailsService;
         this.jwtUtil = jwtUtil;
         this.usuarioServicio = usuarioServicio;
-        this.usuarioRepo = usuarioRepo;
     }
-
 
     @PostMapping("/registro")
-    public String registro(@RequestBody @Valid UsuarioReq req) {
+    public ResponseEntity<Usuario> registro(@RequestBody @Valid UsuarioReq req) {
+        if (req.roles() == null || req.roles().isEmpty()) {
+            req = new UsuarioReq(req.nombreUsuario(), req.password(), Set.of(Rol.OPERADOR));
+        }
         Usuario u = usuarioServicio.crear(req);
-        return "Usuario creado: " + u.getNombreUsuario();
+        return ResponseEntity.status(HttpStatus.CREATED).body(u);
     }
-
 
     @PostMapping("/login")
     public LoginRes login(@RequestBody @Valid LoginReq req) {

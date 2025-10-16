@@ -187,7 +187,6 @@ public class MovimientoServicio {
         }
 
         if (sku != null && !sku.isBlank()) {
-            // contiene e insensible a mayúsculas
             and.add(Criteria.where("sku").regex(".*" + java.util.regex.Pattern.quote(sku.trim()) + ".*", "i"));
         }
 

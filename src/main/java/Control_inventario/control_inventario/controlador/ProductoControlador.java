@@ -17,14 +17,13 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api")
 public class ProductoControlador {
 
     private final ProductoServicio servicio;
-    private final SimpMessagingTemplate ws; // para notificar a /topic/productos
+    private final SimpMessagingTemplate ws;
 
     public ProductoControlador(ProductoServicio servicio, SimpMessagingTemplate ws) {
         this.servicio = servicio;
@@ -50,30 +49,25 @@ public class ProductoControlador {
         return ResponseEntity.status(HttpStatus.CREATED).body(guardado);
     }
 
-    @PutMapping("/productos/{id}/nombre")
-    public ResponseEntity<Producto> actualizarNombre(@PathVariable String id,
-                                                     @RequestBody Map<String, String> body) {
-        String nuevoNombre = (body != null) ? body.get("nombre") : null;
-        if (nuevoNombre == null || nuevoNombre.isBlank()) {
-            return ResponseEntity.badRequest().build();
-        }
-        Producto actual = servicio.buscarPorId(id);
-        if (actual == null) return ResponseEntity.notFound().build();
-
-        actual.setNombre(nuevoNombre);
-        Producto actualizado = servicio.actualizar(actual);
-        notificarProducto("ACTUALIZADO", actualizado);
-        return ResponseEntity.ok(actualizado);
-    }
-
+    // ===== MÉTODO ACTUALIZADO: ahora devuelve 200 con mensaje JSON =====
     @DeleteMapping("/productos/{id}")
-    public ResponseEntity<Void> eliminar(@PathVariable String id) {
+    public ResponseEntity<Map<String, Object>> eliminar(@PathVariable String id) {
         Producto actual = servicio.buscarPorId(id);
-        if (actual == null) return ResponseEntity.notFound().build();
+        if (actual == null) {
+            Map<String, Object> err = new HashMap<>();
+            err.put("error", "Producto no encontrado");
+            err.put("id", id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(err);
+        }
 
         servicio.eliminarPorId(id);
         notificarProducto("ELIMINADO", actual);
-        return ResponseEntity.noContent().build();
+
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("message", "Producto eliminado exitosamente");
+        resp.put("id", id);
+        resp.put("nombre", actual.getNombre());
+        return ResponseEntity.ok(resp);
     }
 
     @GetMapping("/productos/page")
@@ -109,6 +103,58 @@ public class ProductoControlador {
         return ResponseEntity.ok(Page.empty(pageable));
     }
 
+    @PatchMapping("/productos/{id}")
+    public ResponseEntity<?> actualizarParcial(
+            @PathVariable String id,
+            @RequestBody Map<String, Object> body
+    ) {
+        Producto actual = servicio.buscarPorId(id);
+        if (actual == null) return ResponseEntity.notFound().build();
+        if (body == null || body.isEmpty()) return ResponseEntity.badRequest().body("Body vacío");
+
+        Integer oldMin = actual.getMinimo();
+        Integer oldMax = actual.getStockMaximo();
+
+        if (body.containsKey("nombre")) {
+            String v = str(body.get("nombre"));
+            if (v != null && !v.isBlank()) actual.setNombre(v);
+        }
+        if (body.containsKey("categoria")) {
+            String v = str(body.get("categoria"));
+            if (v != null && !v.isBlank()) actual.setCategoria(v);
+        }
+        if (body.containsKey("descripcion")) {
+            actual.setDescripcion(str(body.get("descripcion")));
+        }
+        if (body.containsKey("precioUnitario")) {
+            Double v = dbl(body.get("precioUnitario"));
+            if (v == null || v < 0) return ResponseEntity.badRequest().body("precioUnitario inválido");
+            actual.setPrecioUnitario(v);
+        }
+        if (body.containsKey("minimo")) {
+            Integer v = integer(body.get("minimo"));
+            if (v == null || v < 0) return ResponseEntity.badRequest().body("minimo inválido");
+            actual.setMinimo(v);
+        }
+        if (body.containsKey("stockMaximo")) {
+            Integer v = integer(body.get("stockMaximo"));
+            if (v == null || v < 0) return ResponseEntity.badRequest().body("stockMaximo inválido");
+            actual.setStockMaximo(v);
+        }
+
+        Integer min = actual.getMinimo();
+        Integer max = actual.getStockMaximo();
+        if (min != null && max != null && max < min) {
+            actual.setMinimo(oldMin);
+            actual.setStockMaximo(oldMax);
+            return ResponseEntity.badRequest().body("stockMaximo debe ser mayor o igual que minimo");
+        }
+
+        Producto actualizado = servicio.actualizar(actual);
+        notificarProducto("ACTUALIZADO", actualizado);
+        return ResponseEntity.ok(actualizado);
+    }
+
     private Pageable buildPageable(int page, int size, String sort) {
         if (sort == null || sort.isBlank()) {
             return PageRequest.of(page, size);
@@ -128,11 +174,12 @@ public class ProductoControlador {
             payload.put("id", p.getId());
             payload.put("nombre", p.getNombre());
             payload.put("stock", p.getStock());
+            payload.put("minimo", p.getMinimo());
+            payload.put("stockMaximo", p.getStockMaximo());
             payload.put("usuario", currentUser());
             payload.put("timestamp", Instant.now().toString());
             ws.convertAndSend("/topic/productos", payload);
         } catch (Exception ignored) {
-            // Evita que un fallo de WS afecte la respuesta REST
         }
     }
 
@@ -143,5 +190,23 @@ public class ProductoControlador {
         } catch (Exception e) {
             return "sistema";
         }
+    }
+
+    private static String str(Object o) {
+        return (o == null) ? null : String.valueOf(o);
+    }
+
+    private static Integer integer(Object o) {
+        if (o == null) return null;
+        if (o instanceof Integer i) return i;
+        if (o instanceof Number n) return n.intValue();
+        try { return Integer.parseInt(o.toString()); } catch (Exception e) { return null; }
+    }
+
+    private static Double dbl(Object o) {
+        if (o == null) return null;
+        if (o instanceof Double d) return d;
+        if (o instanceof Number n) return n.doubleValue();
+        try { return Double.parseDouble(o.toString()); } catch (Exception e) { return null; }
     }
 }

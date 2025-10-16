@@ -18,7 +18,6 @@ public class DashboardControlador {
         this.servicio = servicio;
     }
 
-    // GET /api/dashboard/resumen
     @GetMapping("/resumen")
     public Dashborad resumen() {
         return servicio.resumen();
