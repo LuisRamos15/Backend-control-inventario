@@ -18,7 +18,7 @@ public class CorsConfig {
         c.setAllowedMethods(Arrays.asList("GET","POST","PUT","DELETE","OPTIONS"));
         c.setAllowedHeaders(Arrays.asList("*"));
         c.setExposedHeaders(Arrays.asList("*"));
-        c.setAllowCredentials(false); // usamos Authorization, no cookies
+        c.setAllowCredentials(false);
 
         UrlBasedCorsConfigurationSource s = new UrlBasedCorsConfigurationSource();
         s.registerCorsConfiguration("/**", c);

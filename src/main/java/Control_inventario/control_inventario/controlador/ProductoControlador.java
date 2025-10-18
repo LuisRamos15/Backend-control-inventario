@@ -49,7 +49,6 @@ public class ProductoControlador {
         return ResponseEntity.status(HttpStatus.CREATED).body(guardado);
     }
 
-    // ===== MÉTODO ACTUALIZADO: ahora devuelve 200 con mensaje JSON =====
     @DeleteMapping("/productos/{id}")
     public ResponseEntity<Map<String, Object>> eliminar(@PathVariable String id) {
         Producto actual = servicio.buscarPorId(id);
