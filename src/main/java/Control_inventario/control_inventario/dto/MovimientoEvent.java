@@ -3,7 +3,7 @@ package Control_inventario.control_inventario.dto;
 public class MovimientoEvent {
 
     private boolean registrado;
-    private String tipo;              // ENTRADA | SALIDA
+    private String tipo;
     private String productoId;
     private String productoNombre;
     private String sku;

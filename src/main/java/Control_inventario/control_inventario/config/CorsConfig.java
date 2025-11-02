@@ -15,11 +15,9 @@ public class CorsConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration c = new CorsConfiguration();
 
-        // IMPORTANTES: credenciales y orígenes explícitos (no "*")
         c.setAllowCredentials(true);
         c.setAllowedOrigins(List.of(
                 "http://localhost:4200"
-                // agrega aquí otros orígenes válidos (tu dominio en producción)
         ));
 
         c.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
