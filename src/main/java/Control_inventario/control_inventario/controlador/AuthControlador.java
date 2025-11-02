@@ -15,6 +15,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -51,6 +52,12 @@ public class AuthControlador {
 
     @PostMapping("/login")
     public LoginRes login(@RequestBody @Valid LoginReq req) {
+
+        if (!usuarioServicio.existePorNombreUsuario(req.getNombreUsuario())) {
+            throw new UsernameNotFoundException("Usuario no encontrado");
+        }
+
+
         UsernamePasswordAuthenticationToken authToken =
                 new UsernamePasswordAuthenticationToken(req.getNombreUsuario(), req.getPassword());
         authManager.authenticate(authToken);

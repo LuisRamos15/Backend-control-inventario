@@ -10,6 +10,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -42,13 +43,21 @@ public class ProductoControlador {
         return ResponseEntity.ok(p);
     }
 
+
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR','ROLE_ADMIN','ROLE_SUPERVISOR')")
     @PostMapping("/productos")
     public ResponseEntity<Producto> crear(@Valid @RequestBody Producto p) {
+        // 🔒 Fijar mínimo en 10 (si no viene o viene menor)
+        if (p.getMinimo() == null || p.getMinimo() < 10) {
+            p.setMinimo(10);
+        }
         Producto guardado = servicio.crear(p);
         notificarProducto("CREADO", guardado);
         return ResponseEntity.status(HttpStatus.CREATED).body(guardado);
     }
 
+
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR','ROLE_ADMIN','ROLE_SUPERVISOR')")
     @DeleteMapping("/productos/{id}")
     public ResponseEntity<Map<String, Object>> eliminar(@PathVariable String id) {
         Producto actual = servicio.buscarPorId(id);
@@ -102,6 +111,8 @@ public class ProductoControlador {
         return ResponseEntity.ok(Page.empty(pageable));
     }
 
+
+    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR','ROLE_ADMIN','ROLE_SUPERVISOR')")
     @PatchMapping("/productos/{id}")
     public ResponseEntity<?> actualizarParcial(
             @PathVariable String id,
@@ -130,11 +141,9 @@ public class ProductoControlador {
             if (v == null || v < 0) return ResponseEntity.badRequest().body("precioUnitario inválido");
             actual.setPrecioUnitario(v);
         }
-        if (body.containsKey("minimo")) {
-            Integer v = integer(body.get("minimo"));
-            if (v == null || v < 0) return ResponseEntity.badRequest().body("minimo inválido");
-            actual.setMinimo(v);
-        }
+
+
+
         if (body.containsKey("stockMaximo")) {
             Integer v = integer(body.get("stockMaximo"));
             if (v == null || v < 0) return ResponseEntity.badRequest().body("stockMaximo inválido");

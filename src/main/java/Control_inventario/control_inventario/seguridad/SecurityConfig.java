@@ -30,7 +30,6 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
 
@@ -40,16 +39,12 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/",
                                 "/index.html",
-                                "/websocket.html",
                                 "/favicon.ico",
                                 "/assets/**", "/static/**", "/public/**",
                                 "/css/**", "/js/**", "/img/**"
                         ).permitAll()
 
-
-                        .requestMatchers(
-                                "/api/auth/**",
-                                "/actuator/health",
+                        .requestMatchers("/api/auth/**", "/actuator/health",
                                 "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**"
                         ).permitAll()
 

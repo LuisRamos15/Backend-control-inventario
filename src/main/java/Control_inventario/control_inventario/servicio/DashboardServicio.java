@@ -3,6 +3,7 @@ package Control_inventario.control_inventario.servicio;
 import Control_inventario.control_inventario.dto.Dashborad;
 import Control_inventario.control_inventario.dto.DiaMovimientos;
 import Control_inventario.control_inventario.dto.TopProducto;
+import Control_inventario.control_inventario.dto.AlertaEvent;
 import Control_inventario.control_inventario.entidad.Movimiento;
 import Control_inventario.control_inventario.repositorio.MovimientoRepositorio;
 import Control_inventario.control_inventario.repositorio.ProductoRepositorio;
@@ -23,19 +24,20 @@ public class DashboardServicio {
         this.movimientoRepo = movimientoRepo;
     }
 
-
     private Instant inicioDiaUtc(LocalDate d) {
         return d.atStartOfDay().toInstant(ZoneOffset.UTC);
     }
+
     private Instant finDiaUtc(LocalDate d) {
         return d.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC);
     }
+
     private LocalDate parseOr(LocalDate fallback, String yyyyMMdd) {
         if (yyyyMMdd == null || yyyyMMdd.isBlank()) return fallback;
         return LocalDate.parse(yyyyMMdd);
     }
-    private String ymd(LocalDate d) { return d.toString(); }
 
+    private String ymd(LocalDate d) { return d.toString(); }
 
     public Dashborad resumen() {
         long totalProductos = productoRepo.count();
@@ -44,20 +46,19 @@ public class DashboardServicio {
         LocalDate hoy = LocalDate.now(ZoneOffset.UTC);
         Instant desde = inicioDiaUtc(hoy);
         Instant hasta = finDiaUtc(hoy);
-        long movimientosHoy = movimientoRepo.findByFechaBetween(desde, hasta).size();
 
+
+        long movimientosHoy = movimientoRepo.countByFechaBetween(desde, hasta);
 
         long stockBajo = productoRepo.findAll().stream()
                 .filter(p -> p.getMinimo() != null && p.getStock() != null)
                 .filter(p -> p.getStock() <= p.getMinimo())
                 .count();
 
-
         long alertasActivas = stockBajo;
 
         return new Dashborad(totalProductos, stockBajo, movimientosHoy, alertasActivas);
     }
-
 
     public List<DiaMovimientos> movimientosPorDia(String desdeYmd, String hastaYmd) {
         LocalDate hoy = LocalDate.now(ZoneOffset.UTC);
@@ -68,7 +69,6 @@ public class DashboardServicio {
         Instant hasta = finDiaUtc(d1);
 
         List<Movimiento> lista = movimientoRepo.findByFechaBetween(desde, hasta);
-
 
         Map<String, DiaMovimientos> map = new LinkedHashMap<>();
         LocalDate cur = d0;
@@ -91,7 +91,6 @@ public class DashboardServicio {
 
         return new ArrayList<>(map.values());
     }
-
 
     public List<TopProducto> topProductos(String tipo, Integer limit, String desdeYmd, String hastaYmd) {
         String t = (tipo == null || tipo.isBlank()) ? null : tipo.trim().toUpperCase();
@@ -122,9 +121,36 @@ public class DashboardServicio {
         }
 
         return sumas.entrySet().stream()
-                .sorted((a,b) -> Long.compare(b.getValue(), a.getValue()))
+                .sorted((a, b) -> Long.compare(b.getValue(), a.getValue()))
                 .limit(lim)
-                .map(e -> new TopProducto(e.getKey(), nombrePorSku.getOrDefault(e.getKey(), ""), e.getValue()))
+                .map(e -> new TopProducto(e.getKey(),
+                        nombrePorSku.getOrDefault(e.getKey(), ""),
+                        e.getValue()))
+                .collect(Collectors.toList());
+    }
+
+
+    public List<AlertaEvent> alertasRecientes(Integer limit) {
+        int lim = (limit == null || limit <= 0) ? 10 : Math.min(limit, 50);
+
+        return productoRepo.findAll().stream()
+                .filter(p -> p.getMinimo() != null && p.getStock() != null)
+                .filter(p -> p.getStock() <= p.getMinimo())
+                .sorted(Comparator.comparingInt(p -> p.getStock()))
+                .limit(lim)
+                .map(p -> {
+                    AlertaEvent a = new AlertaEvent();
+                    a.setSku(p.getSku() == null ? "N/A" : p.getSku());
+                    a.setProductoNombre(p.getNombre() == null ? "" : p.getNombre());
+                    a.setStock(p.getStock() == null ? 0 : p.getStock());
+                    a.setMinimo(p.getMinimo() == null ? 0 : p.getMinimo());
+
+                    boolean critico = a.getStock() <= Math.max(1, a.getMinimo() / 2);
+                    a.setNivel(critico ? "STOCK_CRITICO" : "STOCK_BAJO");
+                    a.setMensaje(critico ? "Stock crítico" : "Stock bajo");
+                    a.setFecha(Instant.now().toString());
+                    return a;
+                })
                 .collect(Collectors.toList());
     }
 }

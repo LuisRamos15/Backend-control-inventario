@@ -11,5 +11,8 @@ import java.util.List;
 public interface MovimientoRepositorio extends MongoRepository<Movimiento, String> {
 
     Page<Movimiento> findAllByOrderByFechaDesc(Pageable pageable);
+
     List<Movimiento> findByFechaBetween(Instant desde, Instant hasta);
+
+    long countByFechaBetween(Instant desde, Instant hasta);
 }
