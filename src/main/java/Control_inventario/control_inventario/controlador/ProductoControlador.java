@@ -47,7 +47,7 @@ public class ProductoControlador {
     @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR','ROLE_ADMIN','ROLE_SUPERVISOR')")
     @PostMapping("/productos")
     public ResponseEntity<Producto> crear(@Valid @RequestBody Producto p) {
-        // 🔒 Fijar mínimo en 10 (si no viene o viene menor)
+
         if (p.getMinimo() == null || p.getMinimo() < 10) {
             p.setMinimo(10);
         }
