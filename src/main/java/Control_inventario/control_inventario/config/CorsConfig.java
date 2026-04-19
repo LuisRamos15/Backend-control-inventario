@@ -17,13 +17,14 @@ public class CorsConfig {
 
         c.setAllowCredentials(true);
         c.setAllowedOrigins(List.of(
-                "http://localhost:4200"
+                "http://localhost:4200",
+                "http://localhost:5173"
         ));
 
-        c.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
+        c.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         c.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"));
         c.setExposedHeaders(List.of("Authorization", "Content-Type"));
-        c.setMaxAge(3600L); // cache del preflight
+        c.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource s = new UrlBasedCorsConfigurationSource();
         s.registerCorsConfiguration("/**", c);
