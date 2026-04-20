@@ -1,9 +1,9 @@
 package Control_inventario.control_inventario.controlador;
 
+import Control_inventario.control_inventario.dto.AlertaEvent;
 import Control_inventario.control_inventario.dto.Dashborad;
 import Control_inventario.control_inventario.dto.DiaMovimientos;
 import Control_inventario.control_inventario.dto.TopProducto;
-import Control_inventario.control_inventario.dto.AlertaEvent;
 import Control_inventario.control_inventario.servicio.DashboardServicio;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -21,11 +21,13 @@ public class DashboardControlador {
     }
 
     @GetMapping("/resumen")
+    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN','ADMIN','SUPERVISOR','ROLE_SUPER_ADMIN','ROLE_ADMIN','ROLE_SUPERVISOR')")
     public Dashborad resumen() {
         return servicio.resumen();
     }
 
     @GetMapping("/movimientos-por-dia")
+    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN','ADMIN','SUPERVISOR','ROLE_SUPER_ADMIN','ROLE_ADMIN','ROLE_SUPERVISOR')")
     public List<DiaMovimientos> movimientosPorDia(
             @RequestParam(required = false) String desde,
             @RequestParam(required = false) String hasta
@@ -34,6 +36,7 @@ public class DashboardControlador {
     }
 
     @GetMapping("/top-productos")
+    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN','ADMIN','SUPERVISOR','ROLE_SUPER_ADMIN','ROLE_ADMIN','ROLE_SUPERVISOR')")
     public List<TopProducto> topProductos(
             @RequestParam(required = false) String tipo,
             @RequestParam(required = false) Integer limit,
@@ -44,7 +47,7 @@ public class DashboardControlador {
     }
 
     @GetMapping("/alertas")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN','ADMIN','SUPERVISOR','ROLE_SUPER_ADMIN','ROLE_ADMIN','ROLE_SUPERVISOR')")
     public List<AlertaEvent> alertas(@RequestParam(required = false) Integer limit) {
         return servicio.alertasRecientes(limit);
     }

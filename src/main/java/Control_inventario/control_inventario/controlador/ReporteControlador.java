@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,6 +36,7 @@ public class ReporteControlador {
     private MovimientoRepositorio movimientoRepo;
 
     @GetMapping("/inventario/pdf")
+    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN','ADMIN','SUPERVISOR','ROLE_SUPER_ADMIN','ROLE_ADMIN','ROLE_SUPERVISOR')")
     public ResponseEntity<byte[]> generarReporteInventario() {
         try {
             List<Producto> productos = productoRepo.findAll();
@@ -63,7 +65,6 @@ public class ReporteControlador {
                 table.addCell(p.getCategoria() != null ? p.getCategoria() : "-");
                 table.addCell(String.valueOf(p.getStock() != null ? p.getStock() : 0));
                 table.addCell(String.valueOf(p.getMinimo() != null ? p.getMinimo() : 0));
-
                 table.addCell(String.valueOf(p.getStockMaximo() != null ? p.getStockMaximo() : 0));
             }
 
@@ -83,6 +84,7 @@ public class ReporteControlador {
     }
 
     @GetMapping("/movimientos/pdf")
+    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN','ADMIN','SUPERVISOR','ROLE_SUPER_ADMIN','ROLE_ADMIN','ROLE_SUPERVISOR')")
     public ResponseEntity<byte[]> generarReporteMovimientos() {
         try {
             List<Movimiento> movs = movimientoRepo.findAll();
@@ -130,7 +132,9 @@ public class ReporteControlador {
                     .body(("Error al generar reporte: " + e.getMessage()).getBytes());
         }
     }
+
     @GetMapping("/inventario/excel")
+    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN','ADMIN','SUPERVISOR','ROLE_SUPER_ADMIN','ROLE_ADMIN','ROLE_SUPERVISOR')")
     public ResponseEntity<byte[]> generarReporteInventarioExcel() {
         try {
             List<Producto> productos = productoRepo.findAll();
@@ -138,13 +142,11 @@ public class ReporteControlador {
             org.apache.poi.ss.usermodel.Workbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook();
             org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet("Inventario");
 
-
             org.apache.poi.ss.usermodel.Row header = sheet.createRow(0);
             String[] titulos = {"SKU", "Nombre", "Categoría", "Stock Actual", "Mínimo", "Máximo", "Precio Unitario"};
             for (int i = 0; i < titulos.length; i++) {
                 header.createCell(i).setCellValue(titulos[i]);
             }
-
 
             int rowNum = 1;
             for (Producto p : productos) {
@@ -158,11 +160,9 @@ public class ReporteControlador {
                 row.createCell(6).setCellValue(p.getPrecioUnitario());
             }
 
-
             for (int i = 0; i < titulos.length; i++) {
                 sheet.autoSizeColumn(i);
             }
-
 
             java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
             workbook.write(out);

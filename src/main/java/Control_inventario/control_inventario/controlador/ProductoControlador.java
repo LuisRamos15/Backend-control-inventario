@@ -32,33 +32,33 @@ public class ProductoControlador {
     }
 
     @GetMapping("/productos")
+    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN','ADMIN','SUPERVISOR','OPERADOR','ROLE_SUPER_ADMIN','ROLE_ADMIN','ROLE_SUPERVISOR','ROLE_OPERADOR')")
     public ResponseEntity<?> listarTodos() {
         return ResponseEntity.ok(servicio.listarTodos());
     }
 
     @GetMapping("/productos/{id}")
+    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN','ADMIN','SUPERVISOR','OPERADOR','ROLE_SUPER_ADMIN','ROLE_ADMIN','ROLE_SUPERVISOR','ROLE_OPERADOR')")
     public ResponseEntity<Producto> obtenerPorId(@PathVariable String id) {
         Producto p = servicio.buscarPorId(id);
         if (p == null) return ResponseEntity.notFound().build();
         return ResponseEntity.ok(p);
     }
 
-
-    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR','ROLE_ADMIN','ROLE_SUPERVISOR')")
     @PostMapping("/productos")
+    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN','ADMIN','ROLE_SUPER_ADMIN','ROLE_ADMIN')")
     public ResponseEntity<Producto> crear(@Valid @RequestBody Producto p) {
-
         if (p.getMinimo() == null || p.getMinimo() < 10) {
             p.setMinimo(10);
         }
+
         Producto guardado = servicio.crear(p);
         notificarProducto("CREADO", guardado);
         return ResponseEntity.status(HttpStatus.CREATED).body(guardado);
     }
 
-
-    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR','ROLE_ADMIN','ROLE_SUPERVISOR')")
     @DeleteMapping("/productos/{id}")
+    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN','ADMIN','ROLE_SUPER_ADMIN','ROLE_ADMIN')")
     public ResponseEntity<Map<String, Object>> eliminar(@PathVariable String id) {
         Producto actual = servicio.buscarPorId(id);
         if (actual == null) {
@@ -79,6 +79,7 @@ public class ProductoControlador {
     }
 
     @GetMapping("/productos/page")
+    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN','ADMIN','SUPERVISOR','OPERADOR','ROLE_SUPER_ADMIN','ROLE_ADMIN','ROLE_SUPERVISOR','ROLE_OPERADOR')")
     public Page<Producto> page(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -89,6 +90,7 @@ public class ProductoControlador {
     }
 
     @GetMapping("/productos/search")
+    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN','ADMIN','SUPERVISOR','OPERADOR','ROLE_SUPER_ADMIN','ROLE_ADMIN','ROLE_SUPERVISOR','ROLE_OPERADOR')")
     public ResponseEntity<Page<Producto>> search(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String categoria,
@@ -111,9 +113,8 @@ public class ProductoControlador {
         return ResponseEntity.ok(Page.empty(pageable));
     }
 
-
-    @PreAuthorize("hasAnyAuthority('ADMIN','SUPERVISOR','ROLE_ADMIN','ROLE_SUPERVISOR')")
     @PatchMapping("/productos/{id}")
+    @PreAuthorize("hasAnyAuthority('SUPER_ADMIN','ADMIN','ROLE_SUPER_ADMIN','ROLE_ADMIN')")
     public ResponseEntity<?> actualizarParcial(
             @PathVariable String id,
             @RequestBody Map<String, Object> body
@@ -129,20 +130,21 @@ public class ProductoControlador {
             String v = str(body.get("nombre"));
             if (v != null && !v.isBlank()) actual.setNombre(v);
         }
+
         if (body.containsKey("categoria")) {
             String v = str(body.get("categoria"));
             if (v != null && !v.isBlank()) actual.setCategoria(v);
         }
+
         if (body.containsKey("descripcion")) {
             actual.setDescripcion(str(body.get("descripcion")));
         }
+
         if (body.containsKey("precioUnitario")) {
             Double v = dbl(body.get("precioUnitario"));
             if (v == null || v < 0) return ResponseEntity.badRequest().body("precioUnitario inválido");
             actual.setPrecioUnitario(v);
         }
-
-
 
         if (body.containsKey("stockMaximo")) {
             Integer v = integer(body.get("stockMaximo"));
@@ -152,6 +154,7 @@ public class ProductoControlador {
 
         Integer min = actual.getMinimo();
         Integer max = actual.getStockMaximo();
+
         if (min != null && max != null && max < min) {
             actual.setMinimo(oldMin);
             actual.setStockMaximo(oldMax);
@@ -208,13 +211,21 @@ public class ProductoControlador {
         if (o == null) return null;
         if (o instanceof Integer i) return i;
         if (o instanceof Number n) return n.intValue();
-        try { return Integer.parseInt(o.toString()); } catch (Exception e) { return null; }
+        try {
+            return Integer.parseInt(o.toString());
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static Double dbl(Object o) {
         if (o == null) return null;
         if (o instanceof Double d) return d;
         if (o instanceof Number n) return n.doubleValue();
-        try { return Double.parseDouble(o.toString()); } catch (Exception e) { return null; }
+        try {
+            return Double.parseDouble(o.toString());
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

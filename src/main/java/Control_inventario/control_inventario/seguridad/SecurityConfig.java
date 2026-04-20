@@ -31,24 +31,26 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-
-                        .requestMatchers("/ws", "/ws/**").permitAll()
-
-
+                        .requestMatchers("/ws", "/ws/**", "/ws-sockjs", "/ws-sockjs/**").permitAll()
+                        .requestMatchers("/ws-chat", "/ws-chat/**").permitAll()
                         .requestMatchers(
                                 "/",
                                 "/index.html",
                                 "/favicon.ico",
-                                "/assets/**", "/static/**", "/public/**",
-                                "/css/**", "/js/**", "/img/**"
+                                "/assets/**",
+                                "/static/**",
+                                "/public/**",
+                                "/css/**",
+                                "/js/**",
+                                "/img/**"
                         ).permitAll()
-
-                        .requestMatchers("/api/auth/**", "/actuator/health",
-                                "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**"
+                        .requestMatchers(
+                                "/api/auth/login",
+                                "/actuator/health",
+                                "/v3/api-docs/**",
+                                "/swagger-ui.html",
+                                "/swagger-ui/**"
                         ).permitAll()
-
-
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
@@ -57,7 +59,9 @@ public class SecurityConfig {
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration cfg) throws Exception {
