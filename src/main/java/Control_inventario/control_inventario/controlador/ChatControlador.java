@@ -53,6 +53,16 @@ public class ChatControlador {
                 mensajeGuardado
         );
 
+        messagingTemplate.convertAndSend(
+                "/topic/chat/" + mensajeGuardado.getDestinatario(),
+                mensajeGuardado
+        );
+
+        messagingTemplate.convertAndSend(
+                "/topic/chat/" + mensajeGuardado.getRemitente(),
+                mensajeGuardado
+        );
+
         return mensajeGuardado;
     }
 

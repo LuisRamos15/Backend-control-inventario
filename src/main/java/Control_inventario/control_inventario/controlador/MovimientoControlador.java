@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.security.Principal;
 import java.util.Collection;
@@ -30,18 +31,39 @@ public class MovimientoControlador {
             Principal principal,
             Authentication authentication
     ) {
-        String usuario = (principal != null && principal.getName() != null) ? principal.getName() : "anónimo";
+        try {
+            String usuario = (principal != null && principal.getName() != null) ? principal.getName() : "anónimo";
 
-        if (esOperador(authentication)) {
-            String tipo = req.getTipo() != null ? req.getTipo().trim().toUpperCase() : "";
-            if (!"SALIDA".equals(tipo)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("error", "El rol OPERADOR solo puede registrar movimientos de tipo SALIDA"));
+            if (esOperador(authentication)) {
+                String tipo = req.getTipo() != null ? req.getTipo().trim().toUpperCase() : "";
+                if (!"SALIDA".equals(tipo)) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(Map.of(
+                                    "error", "El rol OPERADOR solo puede registrar movimientos de tipo SALIDA",
+                                    "tipo", "PERMISO"
+                            ));
+                }
             }
-        }
 
-        Map<String, Object> resp = servicio.registrar(req, usuario);
-        return ResponseEntity.status(HttpStatus.CREATED).body(resp);
+            Map<String, Object> resp = servicio.registrar(req, usuario);
+            return ResponseEntity.status(HttpStatus.CREATED).body(resp);
+
+        } catch (ResponseStatusException e) {
+            String mensaje = e.getReason() != null ? e.getReason() : "No se pudo registrar el movimiento";
+
+            return ResponseEntity.status(e.getStatusCode())
+                    .body(Map.of(
+                            "error", mensaje,
+                            "tipo", "VALIDACION_MOVIMIENTO"
+                    ));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "error", "Ocurrió un error inesperado al registrar el movimiento",
+                            "tipo", "ERROR_INTERNO"
+                    ));
+        }
     }
 
     @GetMapping("/recientes")

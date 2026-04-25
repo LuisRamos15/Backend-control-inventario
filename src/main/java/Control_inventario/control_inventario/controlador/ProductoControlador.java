@@ -48,10 +48,6 @@ public class ProductoControlador {
     @PostMapping("/productos")
     @PreAuthorize("hasAnyAuthority('SUPER_ADMIN','ADMIN','ROLE_SUPER_ADMIN','ROLE_ADMIN')")
     public ResponseEntity<Producto> crear(@Valid @RequestBody Producto p) {
-        if (p.getMinimo() == null || p.getMinimo() < 10) {
-            p.setMinimo(10);
-        }
-
         Producto guardado = servicio.crear(p);
         notificarProducto("CREADO", guardado);
         return ResponseEntity.status(HttpStatus.CREATED).body(guardado);
@@ -144,6 +140,12 @@ public class ProductoControlador {
             Double v = dbl(body.get("precioUnitario"));
             if (v == null || v < 0) return ResponseEntity.badRequest().body("precioUnitario inválido");
             actual.setPrecioUnitario(v);
+        }
+
+        if (body.containsKey("minimo")) {
+            Integer v = integer(body.get("minimo"));
+            if (v == null || v < 0) return ResponseEntity.badRequest().body("mínimo inválido");
+            actual.setMinimo(v);
         }
 
         if (body.containsKey("stockMaximo")) {
