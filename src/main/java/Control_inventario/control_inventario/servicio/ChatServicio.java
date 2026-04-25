@@ -13,7 +13,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -72,12 +74,55 @@ public class ChatServicio {
 
     public List<ChatContactoRes> listarContactosDisponibles(String actorNombreUsuario) {
         Usuario actor = obtenerUsuarioActivo(actorNombreUsuario);
+        String usuarioActual = actor.getNombreUsuario();
+
+        Map<String, LocalDateTime> ultimaFechaPorUsuario = new HashMap<>();
+
+        chatRepositorio.findByRemitenteOrDestinatario(usuarioActual, usuarioActual).forEach(chat -> {
+            String otroUsuario = null;
+
+            if (chat.getRemitente() != null && chat.getRemitente().equalsIgnoreCase(usuarioActual)) {
+                otroUsuario = chat.getDestinatario();
+            } else if (chat.getDestinatario() != null && chat.getDestinatario().equalsIgnoreCase(usuarioActual)) {
+                otroUsuario = chat.getRemitente();
+            }
+
+            if (otroUsuario == null || otroUsuario.trim().isEmpty() || chat.getFecha() == null) {
+                return;
+            }
+
+            LocalDateTime fechaActual = ultimaFechaPorUsuario.get(otroUsuario);
+
+            if (fechaActual == null || chat.getFecha().isAfter(fechaActual)) {
+                ultimaFechaPorUsuario.put(otroUsuario, chat.getFecha());
+            }
+        });
 
         return usuarioRepositorio.findAll().stream()
                 .filter(Usuario::isActivo)
                 .filter(u -> !u.getNombreUsuario().equalsIgnoreCase(actor.getNombreUsuario()))
                 .filter(u -> puedeComunicarse(actor, u))
-                .sorted(Comparator.comparing(Usuario::getNombreUsuario, String.CASE_INSENSITIVE_ORDER))
+                .sorted((u1, u2) -> {
+                    LocalDateTime fecha1 = ultimaFechaPorUsuario.get(u1.getNombreUsuario());
+                    LocalDateTime fecha2 = ultimaFechaPorUsuario.get(u2.getNombreUsuario());
+
+                    if (fecha1 != null && fecha2 != null) {
+                        int comparacionFecha = fecha2.compareTo(fecha1);
+                        if (comparacionFecha != 0) {
+                            return comparacionFecha;
+                        }
+                    }
+
+                    if (fecha1 != null) {
+                        return -1;
+                    }
+
+                    if (fecha2 != null) {
+                        return 1;
+                    }
+
+                    return String.CASE_INSENSITIVE_ORDER.compare(u1.getNombreUsuario(), u2.getNombreUsuario());
+                })
                 .map(this::toContactoRes)
                 .collect(Collectors.toList());
     }
