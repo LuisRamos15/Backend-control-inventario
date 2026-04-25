@@ -10,4 +10,6 @@ import java.util.List;
 public interface ChatGrupoMensajeRepositorio extends MongoRepository<ChatGrupoMensaje, String> {
 
     List<ChatGrupoMensaje> findByGrupoIdAndActivoTrueOrderByFechaAsc(String grupoId);
+
+    List<ChatGrupoMensaje> findByActivoTrue();
 }

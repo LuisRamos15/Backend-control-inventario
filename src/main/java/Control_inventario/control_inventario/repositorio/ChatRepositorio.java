@@ -17,4 +17,6 @@ public interface ChatRepositorio extends MongoRepository<Chat, String> {
     List<Chat> findByDestinatarioOrderByFechaAsc(String destinatario);
 
     List<Chat> findByRemitenteOrderByFechaAsc(String remitente);
+
+    List<Chat> findByRemitenteOrDestinatario(String remitente, String destinatario);
 }
